@@ -10,7 +10,7 @@
     let reports:any[] = [];
     let selectedFile:any = null;
     let uploadMessage = "";
-    let totalReports = 0;
+    let waiting = false;
     let showLogoutDialog = false;
     let searchQuery = "";
 
@@ -42,7 +42,6 @@
             const data = await res.json();
             if (res.ok) {
                 reports = [...data.reports];
-                totalReports = data.totalReports;
             } else {
                 console.error("Failed to fetch reports:", data.error);
             }
@@ -80,6 +79,8 @@
             uploadMessage = "Please select an image to upload.";
             return;
         }
+        uploadMessage = "Upload successful!";
+        waiting = true;
 
         const formData = new FormData();
         formData.append("file", selectedFile);
@@ -92,12 +93,14 @@
             const result = await response.json();
 
             if (response.ok) {
-                uploadMessage = "Upload successful!";
                 selectedFile = null;
                 await fetchReports();
+                uploadMessage = "Predictions are ready!"
+                waiting = false;
                 location.reload();
             } else {
                 uploadMessage = `Upload failed: ${result.error}`;
+                waiting = false;
             }
         } catch (error) {
             uploadMessage = "Error uploading file.";
@@ -107,6 +110,21 @@
             } else {
                 console.error("Unexpected error:", error);
             }
+            waiting = false;
+        }
+    }
+
+    function handleDragOver(event: DragEvent) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+
+    function handleDrop(event: DragEvent) {
+        event.preventDefault();
+        event.stopPropagation();
+        const files = event.dataTransfer?.files;
+        if (files && files.length > 0) {
+            handleFileChange({ target: { files } });
         }
     }
 
@@ -213,20 +231,33 @@
             <main class="flex-1 p-6">
                 <section class="bg-white rounded-lg shadow-lg p-6 mb-6">
                     <h2 class="text-xl font-bold text-red-500 mb-4">Upload X-Ray</h2>
-                    <div class="border-dashed border-2 border-red-500 rounded-lg pt-10 pb-6 text-center custom-shadow hover:shadow-xl transition">
-                        <p class="text-gray-600 mb-4">Upload your X-Ray files here</p>
-                        <!-- Button to trigger file select -->
-                        <!-- Uses the api route api/upload to upload the file -->
-
-                        <Button on:click={triggerFileSelect}>Browse Files</Button>
-                        <input type="file" class="hidden" bind:this={fileInput} on:change={handleFileChange} accept="image/jpeg, image/png, image/webp" />
-                        <p class="text-gray-500 mt-6 mb-2">{uploadMessage}</p>
-                        {#if selectedFile}
-                            <Button on:click={uploadFile}>
-                                Upload
-                            </Button>
-                        {/if}
-                    </div>
+                    <form class="file-upload-form" on:dragover={handleDragOver} on:drop={handleDrop}>
+                        <label for="file" class="file-upload-label">
+                            <div class="file-upload-design">
+                                <svg viewBox="0 0 640 512" height="1em">
+                                    <path
+                                        d="M144 480C64.5 480 0 415.5 0 336c0-62.8 40.2-116.2 96.2-135.9c-.1-2.7-.2-5.4-.2-8.1c0-88.4 71.6-160 160-160c59.3 0 111 32.2 138.7 80.2C409.9 102 428.3 96 448 96c53 0 96 43 96 96c0 12.2-2.3 23.8-6.4 34.6C596 238.4 640 290.1 640 352c0 70.7-57.3 128-128 128H144zm79-217c-9.4 9.4-9.4 24.6 0 33.9s24.6 9.4 33.9 0l39-39V392c0 13.3 10.7 24 24 24s24-10.7 24-24V257.9l39 39c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-80-80c-9.4-9.4-24.6-9.4-33.9 0l-80 80z"
+                                    ></path>
+                                </svg>
+                                <p>Drag and Drop</p>
+                                <p>or</p>
+                                <Button on:click={triggerFileSelect}>Browse Files</Button>
+                                <p class="text-gray-500 mt-6 mb-2">{uploadMessage}</p>
+                                {#if selectedFile && !waiting}
+                                    <Button on:click={uploadFile}>
+                                        Upload
+                                    </Button>
+                                {/if}
+                                {#if waiting}
+                                    <p class="text-gray-500 mt-6 mb-2">Please Wait While We Generate Your Predictions</p>
+                                    <svg class="loading" viewBox="25 25 50 50">
+                                        <circle class="loading-circle" r="20" cy="50" cx="50"></circle>
+                                      </svg>
+                                {/if}
+                            </div>
+                            <input type="file" class="hidden" bind:this={fileInput} on:change={handleFileChange} accept="image/jpeg, image/png, image/webp" />
+                        </label>
+                    </form>
                 </section>
 
                 <section id="report-history" class="bg-white rounded-lg shadow-lg p-6 mb-6">
@@ -315,8 +346,83 @@
 
 
 <style>
-    .custom-shadow:hover {
+    .file-upload-form {
+        width: 100%;
+        height: fit-content;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .file-upload-label input {
+        display: none;
+        
+    }
+    .file-upload-label svg {
+        height: 50px;
+        fill: rgb(82, 82, 82);
+        margin-bottom: 20px;
+        
+    }
+
+    .file-upload-label {
+        cursor: pointer;
+        width: 100%;
+        background-color: white;
+        padding: 30px 70px;
+        border-radius: 15px;
+        border: 2px dashed var(--primary_color);
         box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+    }
+
+    .file-upload-label:hover {
+        box-shadow: 0px 12px 40px rgba(0, 0, 0, 0.25);
+    }
+
+    .file-upload-design {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+    }
+
+    .loading {
+        width: 3.25em;
+        transform-origin: center;
+        animation: rotate4 2s linear infinite;
+    }
+
+    .loading-circle {
+        fill: none;
+        stroke: var(--primary_color);
+        stroke-width: 2;
+        stroke-dasharray: 1, 200;
+        stroke-dashoffset: 0;
+        stroke-linecap: round;
+        animation: dash4 1.5s ease-in-out infinite;
+    }
+
+    @keyframes rotate4 {
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+
+    @keyframes dash4 {
+        0% {
+            stroke-dasharray: 1, 200;
+            stroke-dashoffset: 0;
+        }
+
+        50% {
+            stroke-dasharray: 90, 200;
+            stroke-dashoffset: -35px;
+        }
+
+        100% {
+            stroke-dashoffset: -125px;
+        }
     }
 
     .dialog-box-bg {
