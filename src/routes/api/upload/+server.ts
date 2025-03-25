@@ -68,6 +68,7 @@ interface ImageData {
     filename: string;
     data: Binary;
     predictions: number[];
+    heatmap?: Binary;
     timestamp: Date;
     status: string;
 }
@@ -216,6 +217,19 @@ export async function POST({ request, cookies }: RequestEvent) {
         
         const jsonData = JSON.parse(match[1]); // Extract JSON array
         console.log("Prediction received:", Object.values(jsonData[0].predictions)) ;
+
+        // Extract heatmap
+        //push the heatmap to the database
+       
+
+        const heatmapBase64 = jsonData[0].heatmap;
+        const heatmapBuffer = Buffer.from(heatmapBase64, "base64");
+
+        const compressedHeatmapBuffer = await sharp(heatmapBuffer)
+            .resize(512)
+            .jpeg({ quality: 70 })
+            .toBuffer();
+
         
         // Update predictions in MongoDB
         await users.updateOne(
@@ -223,11 +237,12 @@ export async function POST({ request, cookies }: RequestEvent) {
             { 
                 $set: { 
                     "images.$.predictions": Object.values(jsonData[0].predictions),
-                    "images.$.status": "Completed"
+                    "images.$.status": "Completed",
+                    "images.$.heatmap": new Binary(compressedHeatmapBuffer)
                 } as any }// Extract predictions object
         );
         
-        return json({ message: "Upload and prediction successful", prediction: jsonData[0].predictions }, { status: 201 })
+        return json({ message: "Upload and prediction successful", prediction: jsonData[0].predictions}, { status: 201 })
 
     } catch (error) {
         console.error("Error:", error);
