@@ -86,7 +86,7 @@
                 
                 </button> -->
             
-            <img src="https://media.discordapp.net/attachments/1045502891600912545/1357439673961680926/image.png?ex=67f035b6&is=67eee436&hm=03b09a62041d6a1f5494765183b3f4b93d7c652df9a04909474991bf5ae9145e&=&format=webp&quality=lossless&width=461&height=461" alt="AI For Chest X-ray" class="replacement" />     
+            <img src="/Images/medical.png" alt="AI For Chest X-ray" class="replacement" />     
             <div class="header-right">
                 {#if loggedIn}
                     <button on:click={() => confirmLogout("/")}>Home</button>
